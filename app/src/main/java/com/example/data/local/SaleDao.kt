@@ -41,7 +41,7 @@ interface SaleDao {
     @Query("SELECT SUM(totalAmount) FROM sales WHERE saleTimestamp >= :startTimestamp AND saleTimestamp <= :endTimestamp")
     fun getRevenueBetween(startTimestamp: Long, endTimestamp: Long): Flow<Double?>
 
-    @Query("SELECT SUM(amountPaid) FROM sales WHERE saleTimestamp >= :startTimestamp AND saleTimestamp <= :endTimestamp")
+    @Query("SELECT SUM(paidAmount) FROM sales WHERE saleTimestamp >= :startTimestamp AND saleTimestamp <= :endTimestamp")
     fun getCashCollectedBetween(startTimestamp: Long, endTimestamp: Long): Flow<Double?>
 
     @Query("SELECT SUM(dueAmount) FROM sales WHERE saleTimestamp >= :startTimestamp AND saleTimestamp <= :endTimestamp")

@@ -40,3 +40,6 @@ val EmeraldGreenLight = DokanGreenLight
 val PrimaryBlue = DokanGreen
 val AmberWarning = DueAmber
 val RoseError = ErrorRed
+val EmeraldCash = DokanGreen
+val AmberDue = DueAmber
+val RoseOut = ErrorRed

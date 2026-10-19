@@ -61,7 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.model.Product
-import com.example.ui.theme.EmeraldCash
+import com.example.ui.theme.DokanGreen
 import com.example.util.StorageHelper
 import java.io.File
 
@@ -386,13 +386,13 @@ fun AddEditProductBottomSheet(
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = EmeraldCash.copy(alpha = 0.12f),
+                    color = DokanGreen.copy(alpha = 0.12f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = "Estimated Profit per unit: ${StorageHelper.formatCurrency(profit)} (${String.format("%.1f", (profit / parsedPrice) * 100)}% margin)",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = EmeraldCash,
+                        color = DokanGreen,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                     )
                 }
