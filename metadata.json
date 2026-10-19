@@ -1,0 +1,6 @@
+{
+  "name": "RetailPOS",
+  "description": "100% offline retail store inventory management, Point of Sale, and daily sales dashboard powered by Room database.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
