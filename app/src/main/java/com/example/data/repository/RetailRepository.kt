@@ -1,32 +1,43 @@
 package com.example.data.repository
 
+import com.example.data.local.CustomerDao
 import com.example.data.local.ProductDao
 import com.example.data.local.SaleDao
+import com.example.data.model.Customer
+import com.example.data.model.DuePayment
 import com.example.data.model.Product
 import com.example.data.model.Sale
 import kotlinx.coroutines.flow.Flow
 
 class RetailRepository(
     private val productDao: ProductDao,
-    private val saleDao: SaleDao
+    private val saleDao: SaleDao,
+    private val customerDao: CustomerDao
 ) {
+    // Products
     val allProducts: Flow<List<Product>> = productDao.getAllProducts()
-    val allSales: Flow<List<Sale>> = saleDao.getAllSales()
 
     suspend fun insertProduct(product: Product): Long = productDao.insertProduct(product)
-
     suspend fun updateProduct(product: Product) = productDao.updateProduct(product)
-
     suspend fun deleteProduct(product: Product) = productDao.deleteProduct(product)
-
     suspend fun getProductById(id: Long): Product? = productDao.getProductById(id)
+
+    // Sales
+    val allSales: Flow<List<Sale>> = saleDao.getAllSales()
 
     suspend fun completeSale(sale: Sale): Long {
         val saleId = saleDao.insertSale(sale)
+
+        // Adjust inventory stock
         sale.productId?.let { prodId ->
-            // Decrement inventory stock
             productDao.adjustStock(prodId, -sale.quantity)
         }
+
+        // Adjust customer due balance if applicable
+        if (sale.customerId != null && sale.dueAmount > 0) {
+            customerDao.adjustCustomerDue(sale.customerId, sale.dueAmount)
+        }
+
         return saleId
     }
 
@@ -41,7 +52,6 @@ class RetailRepository(
                     productDao.adjustStock(oldSale.productId, difference)
                 }
             } else {
-                // Product changed: refund old product and decrement new product
                 productDao.adjustStock(oldSale.productId, oldSale.quantity)
                 productDao.adjustStock(updatedSale.productId, -updatedSale.quantity)
             }
@@ -50,13 +60,36 @@ class RetailRepository(
         } else if (oldSale.productId == null && updatedSale.productId != null) {
             productDao.adjustStock(updatedSale.productId, -updatedSale.quantity)
         }
+
+        // Adjust customer due difference
+        val oldDue = oldSale.dueAmount
+        val newDue = updatedSale.dueAmount
+        if (oldSale.customerId != null && updatedSale.customerId != null && oldSale.customerId == updatedSale.customerId) {
+            val dueDiff = newDue - oldDue
+            if (dueDiff != 0.0) {
+                customerDao.adjustCustomerDue(oldSale.customerId, dueDiff)
+            }
+        } else {
+            if (oldSale.customerId != null && oldDue > 0) {
+                customerDao.adjustCustomerDue(oldSale.customerId, -oldDue)
+            }
+            if (updatedSale.customerId != null && newDue > 0) {
+                customerDao.adjustCustomerDue(updatedSale.customerId, newDue)
+            }
+        }
     }
 
     suspend fun deleteSale(sale: Sale) {
         saleDao.deleteSale(sale)
+
+        // Restore inventory stock count
         sale.productId?.let { prodId ->
-            // Restore inventory stock count
             productDao.adjustStock(prodId, sale.quantity)
+        }
+
+        // Deduct due from customer if it was a due sale
+        if (sale.customerId != null && sale.dueAmount > 0) {
+            customerDao.adjustCustomerDue(sale.customerId, -sale.dueAmount)
         }
     }
 
@@ -70,6 +103,41 @@ class RetailRepository(
         saleDao.getQuantitySoldBetween(start, end)
 
     fun getAllTimeRevenue(): Flow<Double?> = saleDao.getAllTimeRevenue()
-
     fun getAllTimeQuantitySold(): Flow<Int?> = saleDao.getAllTimeQuantitySold()
+
+    // Customers & Due Khata
+    val allCustomers: Flow<List<Customer>> = customerDao.getAllCustomers()
+    val customersWithDue: Flow<List<Customer>> = customerDao.getCustomersWithDue()
+    val totalDueAmount: Flow<Double?> = customerDao.getTotalDue()
+
+    suspend fun insertCustomer(customer: Customer): Long = customerDao.insertCustomer(customer)
+    suspend fun updateCustomer(customer: Customer) = customerDao.updateCustomer(customer)
+    suspend fun deleteCustomer(customer: Customer) = customerDao.deleteCustomer(customer)
+    suspend fun getCustomerById(id: Long): Customer? = customerDao.getCustomerById(id)
+
+    suspend fun recordDueCollection(
+        customerId: Long,
+        customerName: String,
+        amount: Double,
+        note: String,
+        paymentMethod: String
+    ): Long {
+        val payment = DuePayment(
+            customerId = customerId,
+            customerName = customerName,
+            amount = amount,
+            note = note,
+            paymentMethod = paymentMethod,
+            paymentDate = System.currentTimeMillis()
+        )
+        val id = customerDao.insertDuePayment(payment)
+        // Deduct amount from customer's due
+        customerDao.adjustCustomerDue(customerId, -amount)
+        return id
+    }
+
+    fun getDuePaymentsForCustomer(customerId: Long): Flow<List<DuePayment>> =
+        customerDao.getDuePaymentsForCustomer(customerId)
+
+    val allDuePayments: Flow<List<DuePayment>> = customerDao.getAllDuePayments()
 }

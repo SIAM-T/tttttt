@@ -1,7 +1,5 @@
 package com.example.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,14 +15,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
@@ -61,9 +56,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.data.model.Sale
 import com.example.ui.components.SizeBadge
-import com.example.ui.theme.EmeraldGreen
-import com.example.ui.theme.PrimaryBlue
-import com.example.ui.theme.RoseError
+import com.example.ui.theme.BkashPink
+import com.example.ui.theme.DokanGreen
+import com.example.ui.theme.DueAmber
+import com.example.ui.theme.ErrorRed
 import com.example.util.StorageHelper
 import com.example.viewmodel.RetailViewModel
 import com.example.viewmodel.TimeframeFilter
@@ -85,9 +81,10 @@ fun SalesHistoryScreen(
 
     val filteredRevenue = sales.sumOf { it.totalAmount }
     val filteredQuantity = sales.sumOf { it.quantity }
+    val filteredDue = sales.sumOf { it.dueAmount }
 
     Column(modifier = modifier.fillMaxSize()) {
-        // Sales Statement Header & Timeframe Filter
+        // Sales Statement Header
         Surface(
             tonalElevation = 2.dp,
             color = MaterialTheme.colorScheme.surface,
@@ -101,18 +98,18 @@ fun SalesHistoryScreen(
                 ) {
                     Column {
                         Text(
-                            text = "Sales Statement & History",
+                            text = "বিক্রি স্টেটমেন্ট ও ইতিহাস (Sales Log)",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Log of transactions with full Edit & Delete sync",
+                            text = "নগদ ও বাকি বিক্রির বিস্তারিত হিসেব",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
-                    // Export / Share CSV Button
+                    // Export / Share CSV
                     IconButton(
                         onClick = {
                             val intent = viewModel.exportSalesCsv(context)
@@ -123,14 +120,14 @@ fun SalesHistoryScreen(
                         Icon(
                             imageVector = Icons.Default.Share,
                             contentDescription = "Export CSV",
-                            tint = PrimaryBlue
+                            tint = DokanGreen
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Timeframe Chips (Today, This Week, This Month, All Time)
+                // Timeframe Chips
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -139,7 +136,7 @@ fun SalesHistoryScreen(
                         val isSelected = currentTimeframe == tf
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            color = if (isSelected) DokanGreen else MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier
                                 .weight(1f)
                                 .clickable { viewModel.setSalesTimeframe(tf) }
@@ -149,11 +146,11 @@ fun SalesHistoryScreen(
                                 modifier = Modifier.padding(vertical = 8.dp)
                             ) {
                                 Text(
-                                    text = tf.label,
+                                    text = tf.banglaLabel,
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                     ),
-                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -165,7 +162,7 @@ fun SalesHistoryScreen(
                 // Income Summary Card for this period
                 Surface(
                     shape = RoundedCornerShape(14.dp),
-                    color = EmeraldGreen.copy(alpha = 0.12f),
+                    color = DokanGreen.copy(alpha = 0.10f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -177,22 +174,29 @@ fun SalesHistoryScreen(
                     ) {
                         Column {
                             Text(
-                                text = "${currentTimeframe.label.uppercase()} STATEMENT",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+                                text = "${currentTimeframe.banglaLabel} মোট বিক্রি",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "${sales.size} transactions • $filteredQuantity items sold",
+                                text = "${sales.size} টি বিক্রি • $filteredQuantity টি পণ্য",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            if (filteredDue > 0) {
+                                Text(
+                                    text = "এর মধ্যে বাকি: ${StorageHelper.formatCurrency(filteredDue)}",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = DueAmber
+                                )
+                            }
                         }
 
                         Text(
                             text = StorageHelper.formatCurrency(filteredRevenue),
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
-                            color = EmeraldGreen
+                            color = DokanGreen
                         )
                     }
                 }
@@ -203,7 +207,7 @@ fun SalesHistoryScreen(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { viewModel.setSalesSearch(it) },
-                    placeholder = { Text("Search product name, notes...") },
+                    placeholder = { Text("পণ্য, ক্রেতার নাম বা নোট খুঁজুন...") },
                     leadingIcon = {
                         Icon(imageVector = Icons.Default.Search, contentDescription = "Search")
                     },
@@ -238,13 +242,13 @@ fun SalesHistoryScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "No sales found for ${currentTimeframe.label}",
+                        text = "কোন বিক্রির হিসেব পাওয়া যায়নি",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Recorded sales will show up here automatically",
+                        text = "পিওএস স্ক্রিন থেকে বিক্রি সম্পন্ন করলে এখানে দেখা যাবে",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -253,7 +257,7 @@ fun SalesHistoryScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(sales, key = { it.id }) { sale ->
@@ -273,18 +277,14 @@ fun SalesHistoryScreen(
         AlertDialog(
             onDismissRequest = { saleToDelete = null },
             icon = {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = null,
-                    tint = RoseError
-                )
+                Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = ErrorRed)
             },
             title = {
-                Text("Delete Sale #${sale.id}?")
+                Text("বিক্রি রেকর্ড ডিলিট করবেন?")
             },
             text = {
                 Text(
-                    "Deleting this sale will deduct ${StorageHelper.formatCurrency(sale.totalAmount)} from your income statement and restore ${sale.quantity} items back to inventory stock."
+                    "এটি ডিলিট করলে ${StorageHelper.formatCurrency(sale.totalAmount)} আপনার আয় থেকে বাদ যাবে, পণ্য স্টক ${sale.quantity} টি ফেরত আসবে এবং বাকি থাকলে কাস্টমারের খাতা থেকে সমন্বয় হবে।"
                 )
             },
             confirmButton = {
@@ -293,21 +293,21 @@ fun SalesHistoryScreen(
                         viewModel.deleteSale(sale)
                         saleToDelete = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = RoseError),
+                    colors = ButtonDefaults.buttonColors(containerColor = ErrorRed),
                     modifier = Modifier.testTag("confirm_delete_sale_button")
                 ) {
-                    Text("Delete & Refund Stock", color = Color.White)
+                    Text("ডিলিট করুন", color = Color.White)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { saleToDelete = null }) {
-                    Text("Cancel")
+                    Text("বাতিল")
                 }
             }
         )
     }
 
-    // Fullscreen / Zoom Receipt Dialog
+    // Zoom Receipt Dialog
     viewingReceiptPath?.let { path ->
         Dialog(onDismissRequest = { viewingReceiptPath = null }) {
             Card(
@@ -322,7 +322,7 @@ fun SalesHistoryScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Attached Receipt / Proof",
+                        text = "সংযুক্ত রসিদ / মেমো",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -345,7 +345,7 @@ fun SalesHistoryScreen(
                         onClick = { viewingReceiptPath = null },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Close")
+                        Text("বন্ধ করুন")
                     }
                 }
             }
@@ -396,7 +396,7 @@ private fun SaleItemCard(
                 Text(
                     text = StorageHelper.formatCurrency(sale.totalAmount),
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-                    color = EmeraldGreen
+                    color = if (sale.isDue) DueAmber else DokanGreen
                 )
             }
 
@@ -418,19 +418,29 @@ private fun SaleItemCard(
                         SizeBadge(size = sale.productSize)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "${sale.quantity} pcs × ${StorageHelper.formatCurrency(sale.unitPrice)}",
+                            text = "${sale.quantity} টি × ${StorageHelper.formatCurrency(sale.unitPrice)}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Customer & Due Details
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "ক্রেতা: ${sale.customerName}",
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = PrimaryBlue.copy(alpha = 0.12f)
+                            color = if (sale.isDue) DueAmber.copy(alpha = 0.15f) else DokanGreen.copy(alpha = 0.12f)
                         ) {
                             Text(
-                                text = sale.paymentMethod,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = PrimaryBlue,
+                                text = if (sale.isDue) "বাকি: ${StorageHelper.formatCurrency(sale.dueAmount)}" else "নগদ পরিশোধ",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = if (sale.isDue) DueAmber else DokanGreen,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -445,7 +455,6 @@ private fun SaleItemCard(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                                 .clickable { onViewReceipt(receiptPath) }
                         ) {
                             AsyncImage(
@@ -467,7 +476,7 @@ private fun SaleItemCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Note: ${sale.notes}",
+                        text = "নোট: ${sale.notes}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(8.dp)
@@ -489,13 +498,9 @@ private fun SaleItemCard(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     modifier = Modifier.testTag("edit_sale_button_${sale.id}")
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Edit",
-                        modifier = Modifier.size(16.dp)
-                    )
+                    Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Edit Sale", style = MaterialTheme.typography.labelMedium)
+                    Text("এডিট", style = MaterialTheme.typography.labelMedium)
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -509,7 +514,7 @@ private fun SaleItemCard(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete Sale",
-                        tint = RoseError.copy(alpha = 0.85f),
+                        tint = ErrorRed.copy(alpha = 0.85f),
                         modifier = Modifier.size(18.dp)
                     )
                 }

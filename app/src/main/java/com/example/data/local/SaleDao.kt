@@ -17,6 +17,12 @@ interface SaleDao {
     @Query("SELECT * FROM sales WHERE saleTimestamp >= :startTimestamp AND saleTimestamp <= :endTimestamp ORDER BY saleTimestamp DESC")
     fun getSalesBetween(startTimestamp: Long, endTimestamp: Long): Flow<List<Sale>>
 
+    @Query("SELECT * FROM sales WHERE customerId = :customerId ORDER BY saleTimestamp DESC")
+    fun getSalesByCustomer(customerId: Long): Flow<List<Sale>>
+
+    @Query("SELECT * FROM sales WHERE isDue = 1 AND dueAmount > 0 ORDER BY saleTimestamp DESC")
+    fun getDueSales(): Flow<List<Sale>>
+
     @Query("SELECT * FROM sales WHERE id = :id LIMIT 1")
     suspend fun getSaleById(id: Long): Sale?
 
@@ -34,6 +40,12 @@ interface SaleDao {
 
     @Query("SELECT SUM(totalAmount) FROM sales WHERE saleTimestamp >= :startTimestamp AND saleTimestamp <= :endTimestamp")
     fun getRevenueBetween(startTimestamp: Long, endTimestamp: Long): Flow<Double?>
+
+    @Query("SELECT SUM(amountPaid) FROM sales WHERE saleTimestamp >= :startTimestamp AND saleTimestamp <= :endTimestamp")
+    fun getCashCollectedBetween(startTimestamp: Long, endTimestamp: Long): Flow<Double?>
+
+    @Query("SELECT SUM(dueAmount) FROM sales WHERE saleTimestamp >= :startTimestamp AND saleTimestamp <= :endTimestamp")
+    fun getDueGivenBetween(startTimestamp: Long, endTimestamp: Long): Flow<Double?>
 
     @Query("SELECT SUM(quantity) FROM sales WHERE saleTimestamp >= :startTimestamp AND saleTimestamp <= :endTimestamp")
     fun getQuantitySoldBetween(startTimestamp: Long, endTimestamp: Long): Flow<Int?>

@@ -2,7 +2,6 @@ package com.example.util
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.net.Uri
 import java.io.File
 import java.io.FileOutputStream
@@ -23,16 +22,6 @@ object StorageHelper {
             val fileName = "${prefix}_${System.currentTimeMillis()}.jpg"
             val destFile = File(imagesDir, fileName)
 
-            val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
-            inputStream?.use { input ->
-                // Decode scaled down if very large to optimize memory
-                val options = BitmapFactory.Options().apply {
-                    inJustDecodeBounds = true
-                }
-                // Check bounds first (need second stream or reset)
-            }
-
-            // Stream directly to file
             context.contentResolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(destFile).use { output ->
                     input.copyTo(output)
@@ -80,12 +69,12 @@ object StorageHelper {
     }
 
     fun formatDate(timestamp: Long): String {
-        val sdf = SimpleDateFormat("MMM dd, yyyy • hh:mm a", Locale.getDefault())
+        val sdf = SimpleDateFormat("dd MMM yyyy • hh:mm a", Locale.getDefault())
         return sdf.format(Date(timestamp))
     }
 
     fun formatDateOnly(timestamp: Long): String {
-        val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+        val sdf = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
         return sdf.format(Date(timestamp))
     }
 
@@ -95,6 +84,6 @@ object StorageHelper {
     }
 
     fun formatCurrency(amount: Double): String {
-        return String.format(Locale.US, "$%.2f", amount)
+        return String.format(Locale.US, "৳%,.2f", amount)
     }
 }

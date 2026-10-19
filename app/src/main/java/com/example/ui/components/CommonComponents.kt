@@ -17,9 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Inventory
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -39,9 +37,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.ui.theme.AmberWarning
-import com.example.ui.theme.EmeraldGreen
-import com.example.ui.theme.RoseError
+import com.example.ui.theme.AmberDue
+import com.example.ui.theme.EmeraldCash
+import com.example.ui.theme.RoseOut
 import java.io.File
 
 @Composable
@@ -52,12 +50,12 @@ fun ProductImageThumb(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(
                 Brush.linearGradient(
                     listOf(
-                        MaterialTheme.colorScheme.surfaceVariant,
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                        Color(0xFFF1F5F9),
+                        Color(0xFFE2E8F0)
                     )
                 )
             ),
@@ -75,7 +73,7 @@ fun ProductImageThumb(
             Icon(
                 imageVector = fallbackIcon,
                 contentDescription = "Placeholder",
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                tint = Color(0xFF64748B),
                 modifier = Modifier.size(32.dp)
             )
         }
@@ -89,11 +87,11 @@ fun SizeBadge(
     isSelected: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
-    val bg = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-    val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+    val bg = if (isSelected) MaterialTheme.colorScheme.primary else Color(0xFFF1F5F9)
+    val textColor = if (isSelected) Color.White else Color(0xFF334155)
     val borderMod = if (isSelected) Modifier else Modifier.border(
         1.dp,
-        MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+        Color(0xFFE2E8F0),
         RoundedCornerShape(8.dp)
     )
 
@@ -117,19 +115,19 @@ fun SizeBadge(
 fun StockBadge(stock: Int, modifier: Modifier = Modifier) {
     val (bg, text, textColor) = when {
         stock <= 0 -> Triple(
-            RoseError.copy(alpha = 0.15f),
+            RoseOut.copy(alpha = 0.12f),
             "Out of stock",
-            RoseError
+            RoseOut
         )
         stock <= 5 -> Triple(
-            AmberWarning.copy(alpha = 0.18f),
-            "Low: $stock left",
-            AmberWarning
+            AmberDue.copy(alpha = 0.15f),
+            "Low: $stock pcs",
+            AmberDue
         )
         else -> Triple(
-            EmeraldGreen.copy(alpha = 0.15f),
+            EmeraldCash.copy(alpha = 0.12f),
             "In stock: $stock",
-            EmeraldGreen
+            EmeraldCash
         )
     }
 
@@ -151,7 +149,7 @@ fun StockBadge(stock: Int, modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.width(5.dp))
             Text(
                 text = text,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                 color = textColor
             )
         }
@@ -169,10 +167,11 @@ fun StatCard(
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = Color.White
         ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -187,8 +186,8 @@ fun StatCard(
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.5.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = Color(0xFF64748B),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -196,7 +195,7 @@ fun StatCard(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(accentColor.copy(alpha = 0.15f)),
+                        .background(accentColor.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -211,13 +210,13 @@ fun StatCard(
             Text(
                 text = value,
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface
+                color = Color(0xFF0F172A)
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color(0xFF64748B)
             )
         }
     }

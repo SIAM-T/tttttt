@@ -61,7 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.model.Product
-import com.example.ui.theme.EmeraldGreen
+import com.example.ui.theme.EmeraldCash
 import com.example.util.StorageHelper
 import java.io.File
 
@@ -324,7 +324,7 @@ fun AddEditProductBottomSheet(
                 OutlinedTextField(
                     value = priceText,
                     onValueChange = { priceText = it; errorMessage = null },
-                    label = { Text("Selling Price ($) *") },
+                    label = { Text("Selling Price (৳) *") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier
@@ -334,7 +334,7 @@ fun AddEditProductBottomSheet(
                 OutlinedTextField(
                     value = costPriceText,
                     onValueChange = { costPriceText = it },
-                    label = { Text("Cost Price ($)") },
+                    label = { Text("Cost Price (৳)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.weight(1f)
@@ -386,13 +386,13 @@ fun AddEditProductBottomSheet(
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = EmeraldGreen.copy(alpha = 0.12f),
+                    color = EmeraldCash.copy(alpha = 0.12f),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = "Estimated Profit per unit: ${StorageHelper.formatCurrency(profit)} (${String.format("%.1f", (profit / parsedPrice) * 100)}% margin)",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = EmeraldGreen,
+                        color = EmeraldCash,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                     )
                 }

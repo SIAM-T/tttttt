@@ -11,20 +11,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PointOfSale
 import androidx.compose.material.icons.outlined.ReceiptLong
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,13 +31,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.testTag
+import com.example.data.model.Customer
 import com.example.data.model.Product
 import com.example.data.model.Sale
+import com.example.ui.components.AddEditCustomerBottomSheet
 import com.example.ui.components.AddEditProductBottomSheet
+import com.example.ui.components.CurvedBubbleBottomNav
 import com.example.ui.components.EditSaleBottomSheet
+import com.example.ui.screens.CustomersDueScreen
 import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.InventoryScreen
 import com.example.ui.screens.PosScreen
@@ -50,14 +52,16 @@ import kotlinx.coroutines.launch
 
 enum class ScreenTab(
     val title: String,
+    val banglaTitle: String,
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector,
     val tag: String
 ) {
-    DASHBOARD("Dashboard", Icons.Filled.Dashboard, Icons.Outlined.Dashboard, "tab_dashboard"),
-    POS("POS Sale", Icons.Filled.PointOfSale, Icons.Outlined.PointOfSale, "tab_pos"),
-    INVENTORY("Inventory", Icons.Filled.Inventory2, Icons.Outlined.Inventory2, "tab_inventory"),
-    SALES("Sales Log", Icons.Filled.ReceiptLong, Icons.Outlined.ReceiptLong, "tab_sales")
+    DASHBOARD("Dashboard", "হিসাব", Icons.Filled.Dashboard, Icons.Outlined.Dashboard, "tab_dashboard"),
+    POS("POS", "বিক্রি", Icons.Filled.PointOfSale, Icons.Outlined.PointOfSale, "tab_pos"),
+    INVENTORY("Inventory", "স্টক", Icons.Filled.Inventory2, Icons.Outlined.Inventory2, "tab_inventory"),
+    CUSTOMERS("Customers", "বাকি খাতা", Icons.Filled.People, Icons.Outlined.People, "tab_customers"),
+    SALES("Sales Log", "হিস্ট্রি", Icons.Filled.ReceiptLong, Icons.Outlined.ReceiptLong, "tab_sales")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,6 +75,10 @@ fun MainApp(viewModel: RetailViewModel) {
     val productSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var isProductSheetOpen by remember { mutableStateOf(false) }
     var productToEdit by remember { mutableStateOf<Product?>(null) }
+
+    val customerSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var isCustomerSheetOpen by remember { mutableStateOf(false) }
+    var customerToEdit by remember { mutableStateOf<Customer?>(null) }
 
     val saleSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var isSaleSheetOpen by remember { mutableStateOf(false) }
@@ -91,23 +99,10 @@ fun MainApp(viewModel: RetailViewModel) {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
-            NavigationBar {
-                ScreenTab.entries.forEach { tab ->
-                    val isSelected = currentTab == tab
-                    NavigationBarItem(
-                        selected = isSelected,
-                        onClick = { currentTab = tab },
-                        icon = {
-                            Icon(
-                                imageVector = if (isSelected) tab.selectedIcon else tab.unselectedIcon,
-                                contentDescription = tab.title
-                            )
-                        },
-                        label = { Text(tab.title) },
-                        modifier = Modifier.testTag(tab.tag)
-                    )
-                }
-            }
+            CurvedBubbleBottomNav(
+                currentTab = currentTab,
+                onTabSelected = { currentTab = it }
+            )
         }
     ) { innerPadding ->
         Box(
@@ -125,6 +120,7 @@ fun MainApp(viewModel: RetailViewModel) {
                         viewModel = viewModel,
                         onNavigateToPos = { currentTab = ScreenTab.POS },
                         onNavigateToInventory = { currentTab = ScreenTab.INVENTORY },
+                        onNavigateToCustomers = { currentTab = ScreenTab.CUSTOMERS },
                         onNavigateToSales = { currentTab = ScreenTab.SALES },
                         onOpenAddProduct = {
                             productToEdit = null
@@ -145,6 +141,18 @@ fun MainApp(viewModel: RetailViewModel) {
                         onEditProductClick = { prod ->
                             productToEdit = prod
                             isProductSheetOpen = true
+                        }
+                    )
+
+                    ScreenTab.CUSTOMERS -> CustomersDueScreen(
+                        viewModel = viewModel,
+                        onAddCustomerClick = {
+                            customerToEdit = null
+                            isCustomerSheetOpen = true
+                        },
+                        onEditCustomerClick = { cust ->
+                            customerToEdit = cust
+                            isCustomerSheetOpen = true
                         }
                     )
 
@@ -186,6 +194,29 @@ fun MainApp(viewModel: RetailViewModel) {
         )
     }
 
+    // Add / Edit Customer Bottom Sheet
+    if (isCustomerSheetOpen) {
+        AddEditCustomerBottomSheet(
+            sheetState = customerSheetState,
+            customerToEdit = customerToEdit,
+            onDismiss = {
+                scope.launch { customerSheetState.hide() }.invokeOnCompletion {
+                    isCustomerSheetOpen = false
+                    customerToEdit = null
+                }
+            },
+            onSave = { id, name, phone, address, initialDue ->
+                viewModel.saveCustomer(
+                    id = id,
+                    name = name,
+                    phone = phone,
+                    address = address,
+                    initialDue = initialDue
+                )
+            }
+        )
+    }
+
     // Edit Sale Bottom Sheet
     if (isSaleSheetOpen && saleToEdit != null) {
         EditSaleBottomSheet(
@@ -197,11 +228,12 @@ fun MainApp(viewModel: RetailViewModel) {
                     saleToEdit = null
                 }
             },
-            onSave = { oldSale, newQty, newPrice, newNotes, newReceipt, newPayment ->
+            onSave = { oldSale, newQty, newPrice, newPaid, newNotes, newReceipt, newPayment ->
                 viewModel.updateSale(
                     oldSale = oldSale,
                     newQuantity = newQty,
                     newUnitPrice = newPrice,
+                    newPaidAmount = newPaid,
                     newNotes = newNotes,
                     newReceiptPath = newReceipt,
                     newPaymentMethod = newPayment

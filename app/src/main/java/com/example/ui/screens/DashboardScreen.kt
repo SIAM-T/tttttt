@@ -21,10 +21,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.ShoppingBag
@@ -55,9 +55,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.components.SizeBadge
 import com.example.ui.components.StatCard
-import com.example.ui.theme.AmberWarning
-import com.example.ui.theme.EmeraldGreen
-import com.example.ui.theme.PrimaryBlue
+import com.example.ui.theme.BkashPink
+import com.example.ui.theme.DokanGreen
+import com.example.ui.theme.DueAmber
 import com.example.util.StorageHelper
 import com.example.viewmodel.RetailViewModel
 
@@ -66,6 +66,7 @@ fun DashboardScreen(
     viewModel: RetailViewModel,
     onNavigateToPos: () -> Unit,
     onNavigateToInventory: () -> Unit,
+    onNavigateToCustomers: () -> Unit,
     onNavigateToSales: () -> Unit,
     onOpenAddProduct: () -> Unit,
     modifier: Modifier = Modifier
@@ -77,10 +78,10 @@ fun DashboardScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 90.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // App / Store Header with 100% Offline Badge
+        // Dokan Header with 100% Offline Room DB Badge
         item {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -90,22 +91,22 @@ fun DashboardScreen(
                 ) {
                     Column {
                         Text(
-                            text = "RetailPOS Store",
+                            text = "দোকান হিসাব ও পিওএস",
                             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "Daily Income & Sales Dashboard",
+                            text = "Bangladeshi Retail & Khata Management",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
-                    // Offline Badge
+                    // 100% Offline Badge
                     Surface(
                         shape = RoundedCornerShape(20.dp),
-                        color = EmeraldGreen.copy(alpha = 0.15f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldGreen.copy(alpha = 0.3f))
+                        color = DokanGreen.copy(alpha = 0.12f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, DokanGreen.copy(alpha = 0.3f))
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -115,13 +116,13 @@ fun DashboardScreen(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .clip(CircleShape)
-                                    .background(EmeraldGreen)
+                                    .background(DokanGreen)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "100% Offline (Room DB)",
+                                text = "১০০% অফলাইন",
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = EmeraldGreen
+                                color = DokanGreen
                             )
                         }
                     }
@@ -129,7 +130,7 @@ fun DashboardScreen(
             }
         }
 
-        // Today's Hero Banner Card
+        // Today's Hero Banner Card (Bangladeshi Emerald Green Gradient)
         item {
             Card(
                 shape = RoundedCornerShape(24.dp),
@@ -142,9 +143,9 @@ fun DashboardScreen(
                         .background(
                             Brush.linearGradient(
                                 colors = listOf(
-                                    Color(0xFF1E3A8A),
-                                    Color(0xFF0F766E),
-                                    Color(0xFF065F46)
+                                    Color(0xFF064E3B),
+                                    Color(0xFF047857),
+                                    Color(0xFF059669)
                                 )
                             )
                         )
@@ -157,19 +158,19 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "TODAY'S TOTAL REVENUE",
+                                text = "আজকের মোট বিক্রি (TODAY'S SALES)",
                                 style = MaterialTheme.typography.labelMedium.copy(
                                     letterSpacing = 1.sp,
                                     fontWeight = FontWeight.SemiBold
                                 ),
-                                color = Color.White.copy(alpha = 0.8f)
+                                color = Color.White.copy(alpha = 0.85f)
                             )
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = Color.White.copy(alpha = 0.2f)
                             ) {
                                 Text(
-                                    text = "${summary.todayTransactions} Sales Today",
+                                    text = "${summary.todayTransactions} টি বিক্রি",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                     color = Color.White,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -177,7 +178,7 @@ fun DashboardScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         Text(
                             text = StorageHelper.formatCurrency(summary.todayRevenue),
@@ -185,7 +186,7 @@ fun DashboardScreen(
                             color = Color.White
                         )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -193,12 +194,12 @@ fun DashboardScreen(
                         ) {
                             Column {
                                 Text(
-                                    text = "Items Sold Today",
+                                    text = "আজকের বিক্রি পণ্য",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color.White.copy(alpha = 0.75f)
                                 )
                                 Text(
-                                    text = "${summary.todayItemsSold} units",
+                                    text = "${summary.todayItemsSold} টি",
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = Color.White
                                 )
@@ -206,7 +207,7 @@ fun DashboardScreen(
 
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
-                                    text = "Avg. Order Value",
+                                    text = "গড় অর্ডার মূল্য",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color.White.copy(alpha = 0.75f)
                                 )
@@ -223,6 +224,59 @@ fun DashboardScreen(
             }
         }
 
+        // Market Due & Quick Khata Card
+        item {
+            Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = DueAmber.copy(alpha = 0.12f)
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateToCustomers() }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(DueAmber.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(imageVector = Icons.Default.Payments, contentDescription = null, tint = DueAmber)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "মার্কেটে মোট বাকি (Total Due)",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = DueAmber
+                            )
+                            Text(
+                                text = StorageHelper.formatCurrency(summary.totalDueInMarket),
+                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+                                color = DueAmber
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = Icons.Default.ArrowForward,
+                        contentDescription = "View Khata",
+                        tint = DueAmber,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+
         // Weekly & Monthly Summary Cards Row
         item {
             Row(
@@ -230,26 +284,26 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 StatCard(
-                    title = "This Week",
+                    title = "এই সপ্তাহ",
                     value = StorageHelper.formatCurrency(summary.weekRevenue),
-                    subtitle = "${summary.weekItemsSold} items sold",
+                    subtitle = "${summary.weekItemsSold} টি আইটেম",
                     icon = Icons.Default.DateRange,
-                    accentColor = PrimaryBlue,
+                    accentColor = DokanGreen,
                     modifier = Modifier.weight(1f)
                 )
 
                 StatCard(
-                    title = "This Month",
+                    title = "এই মাস",
                     value = StorageHelper.formatCurrency(summary.monthRevenue),
-                    subtitle = "${summary.monthItemsSold} items sold",
+                    subtitle = "${summary.monthItemsSold} টি আইটেম",
                     icon = Icons.Default.CalendarMonth,
-                    accentColor = EmeraldGreen,
+                    accentColor = BkashPink,
                     modifier = Modifier.weight(1f)
                 )
             }
         }
 
-        // Quick Action Shortcuts
+        // Quick Actions Row
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -261,11 +315,11 @@ fun DashboardScreen(
                         .weight(1f)
                         .testTag("quick_pos_button"),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue)
+                    colors = ButtonDefaults.buttonColors(containerColor = DokanGreen)
                 ) {
                     Icon(imageVector = Icons.Default.PointOfSale, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("New Sale", fontWeight = FontWeight.Bold)
+                    Text("নতুন বিক্রি", fontWeight = FontWeight.Bold)
                 }
 
                 OutlinedButton(
@@ -277,7 +331,7 @@ fun DashboardScreen(
                 ) {
                     Icon(imageVector = Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Product")
+                    Text("পণ্য যোগ করুন")
                 }
             }
         }
@@ -287,7 +341,7 @@ fun DashboardScreen(
             item {
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = AmberWarning.copy(alpha = 0.12f)),
+                    colors = CardDefaults.cardColors(containerColor = DueAmber.copy(alpha = 0.12f)),
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onNavigateToInventory() }
@@ -302,34 +356,25 @@ fun DashboardScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(AmberWarning.copy(alpha = 0.2f)),
+                                .background(DueAmber.copy(alpha = 0.2f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = AmberWarning
-                            )
+                            Icon(imageVector = Icons.Default.Warning, contentDescription = null, tint = DueAmber)
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Low Stock Alert",
+                                text = "কম স্টক সতর্কতা (Low Stock)",
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = AmberWarning
+                                color = DueAmber
                             )
                             Text(
-                                text = "${summary.lowStockCount} product(s) have 5 or fewer items remaining.",
+                                text = "${summary.lowStockCount} টি পণ্যের স্টক ৫ বা তার চেয়ে কম।",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                         }
-                        Icon(
-                            imageVector = Icons.Default.ArrowForward,
-                            contentDescription = "View",
-                            tint = AmberWarning,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Icon(imageVector = Icons.Default.ArrowForward, contentDescription = "View", tint = DueAmber, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -350,15 +395,11 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Top Selling Products",
+                                text = "বেশি বিক্রি হওয়া পণ্য (Top Selling)",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            Icon(
-                                imageVector = Icons.Default.TrendingUp,
-                                contentDescription = null,
-                                tint = EmeraldGreen
-                            )
+                            Icon(imageVector = Icons.Default.TrendingUp, contentDescription = null, tint = DokanGreen)
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
@@ -378,9 +419,9 @@ fun DashboardScreen(
                                         modifier = Modifier.weight(1f)
                                     )
                                     Text(
-                                        text = "$count sold",
+                                        text = "$count টি বিক্রি",
                                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.primary
+                                        color = DokanGreen
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -390,7 +431,7 @@ fun DashboardScreen(
                                         .fillMaxWidth()
                                         .height(6.dp)
                                         .clip(RoundedCornerShape(3.dp)),
-                                    color = EmeraldGreen,
+                                    color = DokanGreen,
                                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
                             }
@@ -408,12 +449,12 @@ fun DashboardScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Recent Sales Activity",
+                    text = "সাম্প্রতিক বিক্রি তালিকা",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 TextButton(onClick = onNavigateToSales) {
-                    Text("View Full Log")
+                    Text("সব দেখুন")
                 }
             }
         }
@@ -439,7 +480,7 @@ fun DashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "No sales recorded yet",
+                            text = "এখনো কোন বিক্রি রেকর্ড করা হয়নি",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -465,13 +506,13 @@ fun DashboardScreen(
                             modifier = Modifier
                                 .size(42.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(EmeraldGreen.copy(alpha = 0.15f)),
+                                .background(if (sale.isDue) DueAmber.copy(alpha = 0.15f) else DokanGreen.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Receipt,
                                 contentDescription = null,
-                                tint = EmeraldGreen,
+                                tint = if (sale.isDue) DueAmber else DokanGreen,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -486,7 +527,14 @@ fun DashboardScreen(
                                 SizeBadge(size = sale.productSize)
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "${sale.quantity} pcs • ${StorageHelper.formatTimeOnly(sale.saleTimestamp)}",
+                                    text = "${sale.quantity} টি • ${StorageHelper.formatTimeOnly(sale.saleTimestamp)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            if (sale.customerName != "Walk-in Customer") {
+                                Text(
+                                    text = "ক্রেতা: ${sale.customerName}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -496,21 +544,25 @@ fun DashboardScreen(
                             Text(
                                 text = StorageHelper.formatCurrency(sale.totalAmount),
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = EmeraldGreen
+                                color = if (sale.isDue) DueAmber else DokanGreen
                             )
-                            Text(
-                                text = sale.paymentMethod,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            if (sale.isDue) {
+                                Text(
+                                    text = "বাকি: ${StorageHelper.formatCurrency(sale.dueAmount)}",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = DueAmber
+                                )
+                            } else {
+                                Text(
+                                    text = sale.paymentMethod,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(30.dp))
         }
     }
 }

@@ -2,36 +2,41 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// RetailPOS Modern Palette
-val Slate900 = Color(0xFF0F172A)
-val Slate800 = Color(0xFF1E293B)
-val Slate700 = Color(0xFF334155)
-val Slate600 = Color(0xFF475569)
-val Slate100 = Color(0xFFF1F5F9)
-val Slate50 = Color(0xFFF8FAFC)
+// Bangladeshi Dokan / Retail Palette - Crisp Light Theme
+val DokanGreen = Color(0xFF059669)
+val DokanGreenLight = Color(0xFF10B981)
+val DokanGreenContainer = Color(0xFFD1FAE5)
+val DokanGreenDark = Color(0xFF064E3B)
 
-// Primary Indigo / Blue
-val PrimaryBlue = Color(0xFF2563EB)
-val PrimaryBlueLight = Color(0xFF60A5FA)
-val PrimaryBlueContainer = Color(0xFFDBEAFE)
+// bKash Magenta / Mobile Pay Accent
+val BkashPink = Color(0xFFE2136E)
+val BkashPinkContainer = Color(0xFFFCE7F3)
 
-// Secondary Emerald Green (Sales / Cash / Success)
-val EmeraldGreen = Color(0xFF10B981)
-val EmeraldGreenLight = Color(0xFF34D399)
-val EmeraldGreenContainer = Color(0xFFD1FAE5)
+// Nagad Orange Accent
+val NagadOrange = Color(0xFFEA580C)
+val NagadOrangeContainer = Color(0xFFFFEDD5)
 
-// Tertiary Amber & Rose
-val AmberWarning = Color(0xFFF59E0B)
-val RoseError = Color(0xFFEF4444)
+// Due / Bakir Khata Warning
+val DueAmber = Color(0xFFD97706)
+val DueAmberContainer = Color(0xFFFEF3C7)
 
-// Dark Theme Surface & Elements
-val DarkBackground = Color(0xFF0B0F19)
-val DarkSurface = Color(0xFF151C2C)
-val DarkSurfaceVariant = Color(0xFF1E293B)
-val DarkOutline = Color(0xFF334155)
-
-// Light Theme Surface & Elements
-val LightBackground = Color(0xFFF8FAFC)
+// Neutral & Backgrounds (Light Theme Focused)
+val LightBg = Color(0xFFF8FAFC)
 val LightSurface = Color(0xFFFFFFFF)
 val LightSurfaceVariant = Color(0xFFF1F5F9)
-val LightOutline = Color(0xFFCBD5E1)
+val LightBorder = Color(0xFFE2E8F0)
+
+val TextPrimary = Color(0xFF0F172A)
+val TextSecondary = Color(0xFF64748B)
+val TextMuted = Color(0xFF94A3B8)
+
+// Status
+val ErrorRed = Color(0xFFDC2626)
+val ErrorContainer = Color(0xFFFEE2E2)
+
+// Aliases for compatibility
+val EmeraldGreen = DokanGreen
+val EmeraldGreenLight = DokanGreenLight
+val PrimaryBlue = DokanGreen
+val AmberWarning = DueAmber
+val RoseError = ErrorRed
