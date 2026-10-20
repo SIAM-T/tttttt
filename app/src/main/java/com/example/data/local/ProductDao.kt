@@ -34,4 +34,10 @@ interface ProductDao {
 
     @Query("SELECT COUNT(*) FROM products")
     suspend fun getProductCount(): Int
+
+    @Query("SELECT * FROM products ORDER BY id ASC")
+    suspend fun getAllProductsList(): List<Product>
+
+    @Query("DELETE FROM products")
+    suspend fun deleteAllProducts()
 }

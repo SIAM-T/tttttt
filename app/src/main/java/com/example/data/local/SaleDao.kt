@@ -58,4 +58,10 @@ interface SaleDao {
 
     @Query("SELECT COUNT(*) FROM sales")
     suspend fun getSaleCount(): Int
+
+    @Query("SELECT * FROM sales ORDER BY id ASC")
+    suspend fun getAllSalesList(): List<Sale>
+
+    @Query("DELETE FROM sales")
+    suspend fun deleteAllSales()
 }

@@ -2,6 +2,8 @@ package com.example.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -31,9 +33,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.Customer
 import com.example.data.model.Product
 import com.example.data.model.Sale
@@ -43,6 +45,7 @@ import com.example.ui.components.CurvedBubbleBottomNav
 import com.example.ui.components.EditSaleBottomSheet
 import com.example.ui.screens.CustomersDueScreen
 import com.example.ui.screens.DashboardScreen
+import com.example.ui.screens.DetailReportScreen
 import com.example.ui.screens.InventoryScreen
 import com.example.ui.screens.PosScreen
 import com.example.ui.screens.SalesHistoryScreen
@@ -68,6 +71,9 @@ enum class ScreenTab(
 @Composable
 fun MainApp(viewModel: RetailViewModel) {
     var currentTab by remember { mutableStateOf(ScreenTab.DASHBOARD) }
+    var isDetailReportOpen by remember { mutableStateOf(false) }
+
+    val dashboardSummary by viewModel.dashboardSummary.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -92,77 +98,101 @@ fun MainApp(viewModel: RetailViewModel) {
     }
 
     // Android Back button handling
-    BackHandler(enabled = currentTab != ScreenTab.DASHBOARD) {
-        currentTab = ScreenTab.DASHBOARD
+    BackHandler(enabled = isDetailReportOpen || currentTab != ScreenTab.DASHBOARD) {
+        if (isDetailReportOpen) {
+            isDetailReportOpen = false
+        } else {
+            currentTab = ScreenTab.DASHBOARD
+        }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        bottomBar = {
-            CurvedBubbleBottomNav(
-                currentTab = currentTab,
-                onTabSelected = { currentTab = it }
-            )
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            AnimatedContent(
-                targetState = currentTab,
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "TabContent"
-            ) { tab ->
-                when (tab) {
-                    ScreenTab.DASHBOARD -> DashboardScreen(
-                        viewModel = viewModel,
-                        onNavigateToPos = { currentTab = ScreenTab.POS },
-                        onNavigateToInventory = { currentTab = ScreenTab.INVENTORY },
-                        onNavigateToCustomers = { currentTab = ScreenTab.CUSTOMERS },
-                        onNavigateToSales = { currentTab = ScreenTab.SALES },
-                        onOpenAddProduct = {
-                            productToEdit = null
-                            isProductSheetOpen = true
+    if (isDetailReportOpen) {
+        DetailReportScreen(
+            viewModel = viewModel,
+            onBack = { isDetailReportOpen = false }
+        )
+    } else {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            bottomBar = {
+                CurvedBubbleBottomNav(
+                    currentTab = currentTab,
+                    onTabSelected = { currentTab = it },
+                    hasDueAlert = dashboardSummary.totalDueInMarket > 0,
+                    hasLowStockAlert = dashboardSummary.lowStockCount > 0
+                )
+            }
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                AnimatedContent(
+                    targetState = currentTab,
+                    transitionSpec = {
+                        val direction = if (targetState.ordinal > initialState.ordinal) {
+                            AnimatedContentTransitionScope.SlideDirection.Left
+                        } else {
+                            AnimatedContentTransitionScope.SlideDirection.Right
                         }
-                    )
+                        (slideIntoContainer(direction, animationSpec = tween(280)) + fadeIn(animationSpec = tween(280)))
+                            .togetherWith(slideOutOfContainer(direction, animationSpec = tween(280)) + fadeOut(animationSpec = tween(280)))
+                    },
+                    label = "TabContent"
+                ) { tab ->
+                    when (tab) {
+                        ScreenTab.DASHBOARD -> DashboardScreen(
+                            viewModel = viewModel,
+                            onNavigateToPos = { currentTab = ScreenTab.POS },
+                            onNavigateToInventory = { currentTab = ScreenTab.INVENTORY },
+                            onNavigateToCustomers = { currentTab = ScreenTab.CUSTOMERS },
+                            onNavigateToSales = { currentTab = ScreenTab.SALES },
+                            onOpenAddProduct = {
+                                productToEdit = null
+                                isProductSheetOpen = true
+                            },
+                            onNavigateToDetailReport = {
+                                isDetailReportOpen = true
+                            }
+                        )
 
-                    ScreenTab.POS -> PosScreen(
-                        viewModel = viewModel
-                    )
+                        ScreenTab.POS -> PosScreen(
+                            viewModel = viewModel
+                        )
 
-                    ScreenTab.INVENTORY -> InventoryScreen(
-                        viewModel = viewModel,
-                        onAddProductClick = {
-                            productToEdit = null
-                            isProductSheetOpen = true
-                        },
-                        onEditProductClick = { prod ->
-                            productToEdit = prod
-                            isProductSheetOpen = true
-                        }
-                    )
+                        ScreenTab.INVENTORY -> InventoryScreen(
+                            viewModel = viewModel,
+                            onAddProductClick = {
+                                productToEdit = null
+                                isProductSheetOpen = true
+                            },
+                            onEditProductClick = { prod ->
+                                productToEdit = prod
+                                isProductSheetOpen = true
+                            }
+                        )
 
-                    ScreenTab.CUSTOMERS -> CustomersDueScreen(
-                        viewModel = viewModel,
-                        onAddCustomerClick = {
-                            customerToEdit = null
-                            isCustomerSheetOpen = true
-                        },
-                        onEditCustomerClick = { cust ->
-                            customerToEdit = cust
-                            isCustomerSheetOpen = true
-                        }
-                    )
+                        ScreenTab.CUSTOMERS -> CustomersDueScreen(
+                            viewModel = viewModel,
+                            onAddCustomerClick = {
+                                customerToEdit = null
+                                isCustomerSheetOpen = true
+                            },
+                            onEditCustomerClick = { cust ->
+                                customerToEdit = cust
+                                isCustomerSheetOpen = true
+                            }
+                        )
 
-                    ScreenTab.SALES -> SalesHistoryScreen(
-                        viewModel = viewModel,
-                        onEditSaleClick = { sale ->
-                            saleToEdit = sale
-                            isSaleSheetOpen = true
-                        }
-                    )
+                        ScreenTab.SALES -> SalesHistoryScreen(
+                            viewModel = viewModel,
+                            onEditSaleClick = { sale ->
+                                saleToEdit = sale
+                                isSaleSheetOpen = true
+                            }
+                        )
+                    }
                 }
             }
         }

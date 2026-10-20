@@ -140,4 +140,37 @@ class RetailRepository(
         customerDao.getDuePaymentsForCustomer(customerId)
 
     val allDuePayments: Flow<List<DuePayment>> = customerDao.getAllDuePayments()
+
+    // Backup & Restore
+    suspend fun getAllProductsList(): List<Product> = productDao.getAllProductsList()
+    suspend fun getAllSalesList(): List<Sale> = saleDao.getAllSalesList()
+    suspend fun getAllCustomersList(): List<Customer> = customerDao.getAllCustomersList()
+    suspend fun getAllDuePaymentsList(): List<DuePayment> = customerDao.getAllDuePaymentsList()
+
+    suspend fun restoreDatabase(
+        products: List<Product>,
+        sales: List<Sale>,
+        customers: List<Customer>,
+        duePayments: List<DuePayment>,
+        replaceAll: Boolean
+    ) {
+        if (replaceAll) {
+            saleDao.deleteAllSales()
+            customerDao.deleteAllDuePayments()
+            customerDao.deleteAllCustomers()
+            productDao.deleteAllProducts()
+        }
+        if (products.isNotEmpty()) {
+            productDao.insertAll(products)
+        }
+        if (customers.isNotEmpty()) {
+            customerDao.insertAllCustomers(customers)
+        }
+        if (sales.isNotEmpty()) {
+            saleDao.insertAll(sales)
+        }
+        if (duePayments.isNotEmpty()) {
+            customerDao.insertAllDuePayments(duePayments)
+        }
+    }
 }

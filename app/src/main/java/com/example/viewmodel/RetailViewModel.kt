@@ -3,6 +3,8 @@ package com.example.viewmodel
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.AppDatabase
@@ -11,6 +13,8 @@ import com.example.data.model.DuePayment
 import com.example.data.model.Product
 import com.example.data.model.Sale
 import com.example.data.repository.RetailRepository
+import com.example.util.BackupDataPayload
+import com.example.util.BackupManager
 import com.example.util.StorageHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -25,12 +29,17 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 enum class TimeframeFilter(val label: String, val banglaLabel: String) {
     TODAY("Today", "আজকের"),
+    YESTERDAY("Yesterday", "গতকালকের"),
     THIS_WEEK("This Week", "এই সপ্তাহের"),
     THIS_MONTH("This Month", "এই মাসের"),
+    LAST_MONTH("Last Month", "গত মাসের"),
     ALL_TIME("All Time", "সব সময়ের")
 }
 
@@ -46,6 +55,29 @@ data class DashboardSummary(
     val allTimeItemsSold: Int = 0,
     val totalDueInMarket: Double = 0.0,
     val lowStockCount: Int = 0
+)
+
+data class ReportTopProduct(
+    val name: String,
+    val size: String,
+    val quantitySold: Int,
+    val totalRevenue: Double
+)
+
+data class DetailedReportData(
+    val timeframe: TimeframeFilter = TimeframeFilter.THIS_MONTH,
+    val totalRevenue: Double = 0.0,
+    val totalCashCollected: Double = 0.0,
+    val totalDueGiven: Double = 0.0,
+    val totalItemsSold: Int = 0,
+    val totalInvoices: Int = 0,
+    val averageOrderValue: Double = 0.0,
+    val cashSalesAmount: Double = 0.0,
+    val bkashSalesAmount: Double = 0.0,
+    val nagadSalesAmount: Double = 0.0,
+    val otherPaymentAmount: Double = 0.0,
+    val topProducts: List<ReportTopProduct> = emptyList(),
+    val salesList: List<Sale> = emptyList()
 )
 
 class RetailViewModel(application: Application) : AndroidViewModel(application) {
@@ -97,10 +129,33 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
     private val _salesSearch = MutableStateFlow("")
     val salesSearch = _salesSearch.asStateFlow()
 
-    // --- POS State (With / Without Customer, Cash / Due) ---
+    // --- POS State (Listed / Unlisted Product, With / Without Customer, Cash / Due) ---
     private val _selectedProduct = MutableStateFlow<Product?>(null)
     val selectedProduct = _selectedProduct.asStateFlow()
 
+    // Unlisted / Instant Product State (selling products physically in store but not yet added in app)
+    private val _isUnlistedProduct = MutableStateFlow(false)
+    val isUnlistedProduct = _isUnlistedProduct.asStateFlow()
+
+    private val _unlistedName = MutableStateFlow("")
+    val unlistedName = _unlistedName.asStateFlow()
+
+    private val _unlistedSize = MutableStateFlow("Standard")
+    val unlistedSize = _unlistedSize.asStateFlow()
+
+    private val _unlistedPriceText = MutableStateFlow("")
+    val unlistedPriceText = _unlistedPriceText.asStateFlow()
+
+    private val _unlistedCategory = MutableStateFlow("General")
+    val unlistedCategory = _unlistedCategory.asStateFlow()
+
+    private val _unlistedSaveToInventory = MutableStateFlow(false)
+    val unlistedSaveToInventory = _unlistedSaveToInventory.asStateFlow()
+
+    private val _unlistedStockQtyText = MutableStateFlow("10")
+    val unlistedStockQtyText = _unlistedStockQtyText.asStateFlow()
+
+    // Shared POS Transaction Settings
     private val _posQuantity = MutableStateFlow(1)
     val posQuantity = _posQuantity.asStateFlow()
 
@@ -121,6 +176,10 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _posPaymentMethod = MutableStateFlow("Cash")
     val posPaymentMethod = _posPaymentMethod.asStateFlow()
+
+    // --- Detailed Report State ---
+    private val _reportTimeframe = MutableStateFlow(TimeframeFilter.THIS_MONTH)
+    val reportTimeframe = _reportTimeframe.asStateFlow()
 
     // --- Filtered Inventory ---
     val filteredProducts: StateFlow<List<Product>> = combine(
@@ -156,17 +215,10 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
         salesTimeframe,
         salesSearch
     ) { saleList, timeframe, query ->
-        val startOfToday = getStartOfDay()
-        val startOfWeek = getStartOfWeek()
-        val startOfMonth = getStartOfMonth()
+        val range = getTimeRange(timeframe)
 
         saleList.filter { sale ->
-            val inTimeframe = when (timeframe) {
-                TimeframeFilter.TODAY -> sale.saleTimestamp >= startOfToday
-                TimeframeFilter.THIS_WEEK -> sale.saleTimestamp >= startOfWeek
-                TimeframeFilter.THIS_MONTH -> sale.saleTimestamp >= startOfMonth
-                TimeframeFilter.ALL_TIME -> true
-            }
+            val inTimeframe = sale.saleTimestamp in range.first..range.second
             val matchesQuery = query.isBlank() ||
                     sale.productName.contains(query, ignoreCase = true) ||
                     sale.customerName.contains(query, ignoreCase = true) ||
@@ -175,6 +227,68 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
             inTimeframe && matchesQuery
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    // --- Detailed Report Analytics Stream ---
+    val detailedReport: StateFlow<DetailedReportData> = combine(
+        sales,
+        reportTimeframe
+    ) { saleList, timeframe ->
+        val range = getTimeRange(timeframe)
+        val filtered = saleList.filter { it.saleTimestamp in range.first..range.second }
+
+        var totalRev = 0.0
+        var totalPaid = 0.0
+        var totalDue = 0.0
+        var totalUnits = 0
+        var cashAmount = 0.0
+        var bkashAmount = 0.0
+        var nagadAmount = 0.0
+        var otherAmount = 0.0
+
+        for (s in filtered) {
+            totalRev += s.totalAmount
+            totalPaid += s.paidAmount
+            totalDue += s.dueAmount
+            totalUnits += s.quantity
+
+            when {
+                s.paymentMethod.contains("bKash", ignoreCase = true) -> bkashAmount += s.paidAmount
+                s.paymentMethod.contains("Nagad", ignoreCase = true) -> nagadAmount += s.paidAmount
+                s.paymentMethod.contains("Cash", ignoreCase = true) || s.paymentMethod.contains("নগদ", ignoreCase = true) -> cashAmount += s.paidAmount
+                else -> otherAmount += s.paidAmount
+            }
+        }
+
+        val aov = if (filtered.isNotEmpty()) totalRev / filtered.size else 0.0
+
+        val topProds = filtered.groupBy { "${it.productName}|||${it.productSize}" }
+            .map { entry ->
+                val parts = entry.key.split("|||")
+                val name = parts.getOrNull(0) ?: "Unknown"
+                val size = parts.getOrNull(1) ?: ""
+                val qty = entry.value.sumOf { it.quantity }
+                val rev = entry.value.sumOf { it.totalAmount }
+                ReportTopProduct(name, size, qty, rev)
+            }
+            .sortedByDescending { it.totalRevenue }
+            .take(6)
+
+        DetailedReportData(
+            timeframe = timeframe,
+            totalRevenue = totalRev,
+            totalCashCollected = totalPaid,
+            totalDueGiven = totalDue,
+            totalItemsSold = totalUnits,
+            totalInvoices = filtered.size,
+            averageOrderValue = aov,
+            cashSalesAmount = cashAmount,
+            bkashSalesAmount = bkashAmount,
+            nagadSalesAmount = nagadAmount,
+            otherPaymentAmount = otherAmount,
+            topProducts = topProds,
+            salesList = filtered
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DetailedReportData())
 
     // --- Dashboard Aggregations ---
     val dashboardSummary: StateFlow<DashboardSummary> = combine(
@@ -342,16 +456,41 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // --- Actions: POS (Sell with / without customer, with / without due) ---
+    // --- Actions: POS (Listed & Unlisted Sales) ---
     fun selectProductForSale(product: Product) {
+        _isUnlistedProduct.value = false
         _selectedProduct.value = product
         _posQuantity.value = 1
         _posIsDue.value = false
         _posPaidAmountText.value = ""
     }
 
+    fun enableUnlistedProductSale() {
+        _selectedProduct.value = null
+        _isUnlistedProduct.value = true
+        _unlistedName.value = ""
+        _unlistedSize.value = "Standard"
+        _unlistedPriceText.value = ""
+        _unlistedCategory.value = "General"
+        _unlistedSaveToInventory.value = false
+        _unlistedStockQtyText.value = "10"
+        _posQuantity.value = 1
+        _posIsDue.value = false
+        _posPaidAmountText.value = ""
+    }
+
+    fun setUnlistedName(name: String) { _unlistedName.value = name }
+    fun setUnlistedSize(size: String) { _unlistedSize.value = size }
+    fun setUnlistedPriceText(price: String) { _unlistedPriceText.value = price }
+    fun setUnlistedCategory(cat: String) { _unlistedCategory.value = cat }
+    fun setUnlistedSaveToInventory(save: Boolean) { _unlistedSaveToInventory.value = save }
+    fun setUnlistedStockQtyText(qty: String) { _unlistedStockQtyText.value = qty }
+
     fun clearSelectedProduct() {
         _selectedProduct.value = null
+        _isUnlistedProduct.value = false
+        _unlistedName.value = ""
+        _unlistedPriceText.value = ""
         _posQuantity.value = 1
         _posSelectedCustomer.value = null
         _posIsDue.value = false
@@ -389,10 +528,27 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun completeSale(onSuccess: () -> Unit) {
-        val product = _selectedProduct.value ?: return
-        val qty = _posQuantity.value
-        val total = product.price * qty
+        val isUnlisted = _isUnlistedProduct.value
+        val product = _selectedProduct.value
 
+        if (!isUnlisted && product == null) return
+
+        val qty = _posQuantity.value
+
+        val (prodName, prodSize, unitPrice) = if (isUnlisted) {
+            val name = _unlistedName.value.trim().ifEmpty { "কাস্টম পণ্য (Custom Item)" }
+            val size = _unlistedSize.value.trim().ifEmpty { "Standard" }
+            val price = _unlistedPriceText.value.toDoubleOrNull() ?: 0.0
+            if (price <= 0.0) {
+                viewModelScope.launch { _userMessage.emit("অনুগ্রহ করে পণ্যের সঠিক মূল্য লিখুন!") }
+                return
+            }
+            Triple(name, size, price)
+        } else {
+            Triple(product!!.name, product.size, product.price)
+        }
+
+        val total = unitPrice * qty
         val customer = _posSelectedCustomer.value
         val isDue = _posIsDue.value
 
@@ -405,11 +561,26 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
         val due = (total - paid).coerceAtLeast(0.0)
 
         viewModelScope.launch(Dispatchers.IO) {
+            var associatedProductId: Long? = product?.id
+
+            // If selling an unlisted product and user wants to save it to inventory too:
+            if (isUnlisted && _unlistedSaveToInventory.value) {
+                val stockCount = _unlistedStockQtyText.value.toIntOrNull() ?: qty
+                val newProduct = Product(
+                    name = prodName,
+                    size = prodSize,
+                    price = unitPrice,
+                    stockQuantity = stockCount, // repository.completeSale will adjust -qty
+                    category = _unlistedCategory.value.trim().ifEmpty { "General" }
+                )
+                associatedProductId = repository.insertProduct(newProduct)
+            }
+
             val sale = Sale(
-                productId = product.id,
-                productName = product.name,
-                productSize = product.size,
-                unitPrice = product.price,
+                productId = associatedProductId,
+                productName = prodName,
+                productSize = prodSize,
+                unitPrice = unitPrice,
                 quantity = qty,
                 totalAmount = total,
                 customerId = customer?.id,
@@ -443,6 +614,10 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
     // --- Actions: Sales History Management ---
     fun setSalesTimeframe(timeframe: TimeframeFilter) {
         _salesTimeframe.value = timeframe
+    }
+
+    fun setReportTimeframe(timeframe: TimeframeFilter) {
+        _reportTimeframe.value = timeframe
     }
 
     fun setSalesSearch(query: String) {
@@ -504,7 +679,7 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
 
-            val uri = androidx.core.content.FileProvider.getUriForFile(
+            val uri = FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.fileprovider",
                 file
@@ -519,6 +694,121 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
         } catch (e: Exception) {
             e.printStackTrace()
             return null
+        }
+    }
+
+    // --- Share Detailed Report Summary as WhatsApp/SMS Text ---
+    fun shareDetailedReportText(context: Context, data: DetailedReportData): Intent {
+        val sb = StringBuilder()
+        sb.append("📊 *দোকানের বিস্তারিত হিসাব ও বিক্রয় রিপোর্ট*\n")
+        sb.append("📅 সময়কাল: ${data.timeframe.banglaLabel}\n")
+        sb.append("---------------------------------\n")
+        sb.append("💰 মোট বিক্রি: ${StorageHelper.formatCurrency(data.totalRevenue)}\n")
+        sb.append("💵 নগদ আদায়: ${StorageHelper.formatCurrency(data.totalCashCollected)}\n")
+        sb.append("⚠️ বাকি দেওয়া: ${StorageHelper.formatCurrency(data.totalDueGiven)}\n")
+        sb.append("📦 মোট পণ্য বিক্রি: ${data.totalItemsSold} টি\n")
+        sb.append("🧾 মোট মেমো/রসিদ: ${data.totalInvoices} টি\n")
+        sb.append("📈 গড় বিক্রি প্রতি মেমো: ${StorageHelper.formatCurrency(data.averageOrderValue)}\n\n")
+
+        sb.append("💳 *পেমেন্ট পদ্ধতি বিশ্লেষণ:*\n")
+        sb.append("• ক্যাশ: ${StorageHelper.formatCurrency(data.cashSalesAmount)}\n")
+        if (data.bkashSalesAmount > 0) sb.append("• বিকাশ: ${StorageHelper.formatCurrency(data.bkashSalesAmount)}\n")
+        if (data.nagadSalesAmount > 0) sb.append("• নগদ: ${StorageHelper.formatCurrency(data.nagadSalesAmount)}\n")
+        if (data.otherPaymentAmount > 0) sb.append("• অন্যান্য: ${StorageHelper.formatCurrency(data.otherPaymentAmount)}\n")
+
+        if (data.topProducts.isNotEmpty()) {
+            sb.append("\n🏆 *শীর্ষ বিক্রিত পণ্যসমূহ:*\n")
+            data.topProducts.forEachIndexed { i, prod ->
+                sb.append("${i + 1}. ${prod.name} (${prod.size}) - ${prod.quantitySold} টি (${StorageHelper.formatCurrency(prod.totalRevenue)})\n")
+            }
+        }
+
+        sb.append("---------------------------------\n")
+        sb.append("📱 RetailPOS • 100% অফলাইন ও নিরাপদ হিসাব")
+
+        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, sb.toString())
+        }
+        return Intent.createChooser(sendIntent, "রিপোর্ট পাঠান (হোয়াটসঅ্যাপ / মেসেজ)")
+    }
+
+    // --- Full Database Backup & Restore Operations ---
+    fun exportFullBackup(context: Context, onResult: (Intent?) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val prodList = repository.getAllProductsList()
+            val saleList = repository.getAllSalesList()
+            val custList = repository.getAllCustomersList()
+            val dueList = repository.getAllDuePaymentsList()
+
+            val intent = BackupManager.createBackupJsonFile(
+                context = context,
+                products = prodList,
+                sales = saleList,
+                customers = custList,
+                duePayments = dueList
+            )
+            launch(Dispatchers.Main) {
+                onResult(intent)
+            }
+        }
+    }
+
+    fun parseBackupFile(context: Context, uri: Uri, onResult: (BackupDataPayload?) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val payload = BackupManager.parseBackupJson(context, uri)
+            launch(Dispatchers.Main) {
+                onResult(payload)
+            }
+        }
+    }
+
+    fun restoreBackupData(payload: BackupDataPayload, replaceAll: Boolean, onDone: () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.restoreDatabase(
+                products = payload.products,
+                sales = payload.sales,
+                customers = payload.customers,
+                duePayments = payload.duePayments,
+                replaceAll = replaceAll
+            )
+            val msg = if (replaceAll) {
+                "সফলভাবে ডাটাবেজ রিস্টোর করা হয়েছে (${payload.totalRecords} টি রেকর্ড)!"
+            } else {
+                "সফলভাবে ডাটা মার্জ করা হয়েছে (${payload.totalRecords} টি রেকর্ড)!"
+            }
+            _userMessage.emit(msg)
+            launch(Dispatchers.Main) {
+                onDone()
+            }
+        }
+    }
+
+    private fun getTimeRange(timeframe: TimeframeFilter): Pair<Long, Long> {
+        val startOfToday = getStartOfDay()
+        val endOfToday = startOfToday + 86400000L - 1
+        return when (timeframe) {
+            TimeframeFilter.TODAY -> Pair(startOfToday, endOfToday)
+            TimeframeFilter.YESTERDAY -> {
+                val startOfYesterday = startOfToday - 86400000L
+                val endOfYesterday = startOfToday - 1
+                Pair(startOfYesterday, endOfYesterday)
+            }
+            TimeframeFilter.THIS_WEEK -> Pair(getStartOfWeek(), Long.MAX_VALUE)
+            TimeframeFilter.THIS_MONTH -> Pair(getStartOfMonth(), Long.MAX_VALUE)
+            TimeframeFilter.LAST_MONTH -> {
+                val cal = Calendar.getInstance()
+                cal.set(Calendar.DAY_OF_MONTH, 1)
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                val thisMonthStart = cal.timeInMillis
+                cal.add(Calendar.MONTH, -1)
+                val lastMonthStart = cal.timeInMillis
+                Pair(lastMonthStart, thisMonthStart - 1)
+            }
+            TimeframeFilter.ALL_TIME -> Pair(0L, Long.MAX_VALUE)
         }
     }
 

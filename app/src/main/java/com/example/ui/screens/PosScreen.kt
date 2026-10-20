@@ -34,15 +34,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddAPhoto
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -66,7 +67,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -83,8 +84,11 @@ import com.example.ui.components.SizeBadge
 import com.example.ui.components.StockBadge
 import com.example.ui.theme.BkashPink
 import com.example.ui.theme.DokanGreen
+import com.example.ui.theme.DokanGreenContainer
+import com.example.ui.theme.DokanGreenDark
 import com.example.ui.theme.DueAmber
 import com.example.ui.theme.ErrorRed
+import com.example.ui.theme.NagadOrange
 import com.example.util.StorageHelper
 import com.example.viewmodel.RetailViewModel
 
@@ -100,6 +104,14 @@ fun PosScreen(
     val selectedSizeFilter by viewModel.inventorySizeFilter.collectAsStateWithLifecycle()
 
     val selectedProduct by viewModel.selectedProduct.collectAsStateWithLifecycle()
+    val isUnlistedProduct by viewModel.isUnlistedProduct.collectAsStateWithLifecycle()
+
+    val unlistedName by viewModel.unlistedName.collectAsStateWithLifecycle()
+    val unlistedSize by viewModel.unlistedSize.collectAsStateWithLifecycle()
+    val unlistedPriceText by viewModel.unlistedPriceText.collectAsStateWithLifecycle()
+    val unlistedSaveToInventory by viewModel.unlistedSaveToInventory.collectAsStateWithLifecycle()
+    val unlistedStockQtyText by viewModel.unlistedStockQtyText.collectAsStateWithLifecycle()
+
     val quantity by viewModel.posQuantity.collectAsStateWithLifecycle()
     val selectedCustomer by viewModel.posSelectedCustomer.collectAsStateWithLifecycle()
     val isDue by viewModel.posIsDue.collectAsStateWithLifecycle()
@@ -159,7 +171,57 @@ fun PosScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Quick Action: Sell Unlisted / Instant Item Button
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = DokanGreen.copy(alpha = 0.1f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, DokanGreen.copy(alpha = 0.35f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.enableUnlistedProductSale() }
+                        .testTag("pos_unlisted_product_button")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(DokanGreen, RoundedCornerShape(8.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Bolt,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "⚡ অন-দ্য-স্পট অতালিকাভুক্ত পণ্য বিক্রি করুন",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = DokanGreenDark
+                                )
+                                Text(
+                                    text = "দোকানে থাকা কিন্তু অ্যাপের স্টকে না থাকা পণ্য সরাসরি বিক্রি করুন",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // Search Bar
                 OutlinedTextField(
@@ -214,7 +276,7 @@ fun PosScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(32.dp),
+                        .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
@@ -230,12 +292,30 @@ fun PosScreen(
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = if (allProducts.isEmpty()) "ইনভেন্টরি ট্যাবে গিয়ে নতুন পণ্য যোগ করুন" else "অন্য কোনো নামে সার্চ করুন",
+                        text = "স্টকে যোগ না থাকলেও সরাসরি বিক্রি করতে নিচের বাটনে চাপুন:",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            viewModel.enableUnlistedProductSale()
+                            if (searchQuery.isNotBlank()) {
+                                viewModel.setUnlistedName(searchQuery)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = DokanGreen),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (searchQuery.isNotBlank()) "‘$searchQuery’ নামে সরাসরি বিক্রি করুন" else "সরাসরি পণ্য বিক্রি করুন",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             } else {
                 LazyVerticalGrid(
@@ -246,7 +326,7 @@ fun PosScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(filteredProducts, key = { it.id }) { product ->
-                        val isSelected = selectedProduct?.id == product.id
+                        val isSelected = selectedProduct?.id == product.id && !isUnlistedProduct
                         ProductPosCard(
                             product = product,
                             isSelected = isSelected,
@@ -257,41 +337,50 @@ fun PosScreen(
             }
         }
 
-        // Checkout Bottom Drawer / Active Sale Panel
+        // Checkout Bottom Drawer / Active Sale Panel (Handles both listed and unlisted products)
         AnimatedVisibility(
-            visible = selectedProduct != null,
+            visible = selectedProduct != null || isUnlistedProduct,
             enter = expandVertically(),
             exit = shrinkVertically()
         ) {
-            selectedProduct?.let { product ->
-                ActiveSaleCheckoutPanel(
-                    product = product,
-                    quantity = quantity,
-                    selectedCustomer = selectedCustomer,
-                    customersList = customers,
-                    isDue = isDue,
-                    paidAmountText = paidAmountText,
-                    notes = notes,
-                    receiptPath = receiptPath,
-                    paymentMethod = paymentMethod,
-                    onQuantityChange = { viewModel.updatePosQuantity(it) },
-                    onCustomerSelect = { viewModel.setPosCustomer(it) },
-                    onIsDueChange = { viewModel.setPosIsDue(it) },
-                    onPaidAmountTextChange = { viewModel.setPosPaidAmountText(it) },
-                    onNotesChange = { viewModel.setPosNotes(it) },
-                    onPaymentMethodChange = { viewModel.setPosPaymentMethod(it) },
-                    onAttachReceipt = {
-                        photoPickerLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
-                    },
-                    onRemoveReceipt = { viewModel.setPosReceiptPath(null) },
-                    onClose = { viewModel.clearSelectedProduct() },
-                    onCompleteSale = {
-                        viewModel.completeSale(onSuccess = {})
-                    }
-                )
-            }
+            ActiveSaleCheckoutPanel(
+                isUnlisted = isUnlistedProduct,
+                product = selectedProduct,
+                unlistedName = unlistedName,
+                unlistedSize = unlistedSize,
+                unlistedPriceText = unlistedPriceText,
+                unlistedSaveToInventory = unlistedSaveToInventory,
+                unlistedStockQtyText = unlistedStockQtyText,
+                quantity = quantity,
+                selectedCustomer = selectedCustomer,
+                customersList = customers,
+                isDue = isDue,
+                paidAmountText = paidAmountText,
+                notes = notes,
+                receiptPath = receiptPath,
+                paymentMethod = paymentMethod,
+                onUnlistedNameChange = { viewModel.setUnlistedName(it) },
+                onUnlistedSizeChange = { viewModel.setUnlistedSize(it) },
+                onUnlistedPriceChange = { viewModel.setUnlistedPriceText(it) },
+                onUnlistedSaveToInventoryChange = { viewModel.setUnlistedSaveToInventory(it) },
+                onUnlistedStockQtyChange = { viewModel.setUnlistedStockQtyText(it) },
+                onQuantityChange = { viewModel.updatePosQuantity(it) },
+                onCustomerSelect = { viewModel.setPosCustomer(it) },
+                onIsDueChange = { viewModel.setPosIsDue(it) },
+                onPaidAmountTextChange = { viewModel.setPosPaidAmountText(it) },
+                onNotesChange = { viewModel.setPosNotes(it) },
+                onPaymentMethodChange = { viewModel.setPosPaymentMethod(it) },
+                onAttachReceipt = {
+                    photoPickerLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                },
+                onRemoveReceipt = { viewModel.setPosReceiptPath(null) },
+                onClose = { viewModel.clearSelectedProduct() },
+                onCompleteSale = {
+                    viewModel.completeSale(onSuccess = {})
+                }
+            )
         }
     }
 }
@@ -373,7 +462,13 @@ private fun ProductPosCard(
 
 @Composable
 private fun ActiveSaleCheckoutPanel(
-    product: Product,
+    isUnlisted: Boolean,
+    product: Product?,
+    unlistedName: String,
+    unlistedSize: String,
+    unlistedPriceText: String,
+    unlistedSaveToInventory: Boolean,
+    unlistedStockQtyText: String,
     quantity: Int,
     selectedCustomer: Customer?,
     customersList: List<Customer>,
@@ -382,6 +477,11 @@ private fun ActiveSaleCheckoutPanel(
     notes: String,
     receiptPath: String?,
     paymentMethod: String,
+    onUnlistedNameChange: (String) -> Unit,
+    onUnlistedSizeChange: (String) -> Unit,
+    onUnlistedPriceChange: (String) -> Unit,
+    onUnlistedSaveToInventoryChange: (Boolean) -> Unit,
+    onUnlistedStockQtyChange: (String) -> Unit,
     onQuantityChange: (Int) -> Unit,
     onCustomerSelect: (Customer?) -> Unit,
     onIsDueChange: (Boolean) -> Unit,
@@ -393,7 +493,12 @@ private fun ActiveSaleCheckoutPanel(
     onClose: () -> Unit,
     onCompleteSale: () -> Unit
 ) {
-    val totalAmount = product.price * quantity
+    val unitPrice = if (isUnlisted) {
+        unlistedPriceText.toDoubleOrNull() ?: 0.0
+    } else {
+        product?.price ?: 0.0
+    }
+    val totalAmount = unitPrice * quantity
     val enteredPaid = paidAmountText.toDoubleOrNull() ?: 0.0
     val actualPaid = if (isDue) enteredPaid.coerceIn(0.0, totalAmount) else totalAmount
     val dueAmount = (totalAmount - actualPaid).coerceAtLeast(0.0)
@@ -419,40 +524,166 @@ private fun ActiveSaleCheckoutPanel(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    ProductImageThumb(
-                        imagePath = product.imagePath,
-                        modifier = Modifier.size(46.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = product.name,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            SizeBadge(size = product.size)
-                            Spacer(modifier = Modifier.width(6.dp))
+                if (isUnlisted) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .background(DokanGreenContainer, RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Bolt,
+                                contentDescription = null,
+                                tint = DokanGreen,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
                             Text(
-                                text = "${StorageHelper.formatCurrency(product.price)} • স্টক: ${product.stockQuantity}",
-                                style = MaterialTheme.typography.bodySmall,
+                                text = "⚡ অন-দ্য-স্পট অতালিকাভুক্ত পণ্য",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = DokanGreenDark
+                            )
+                            Text(
+                                text = "স্টকে না থাকলেও সরাসরি বিক্রি করুন",
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
+                } else if (product != null) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        ProductImageThumb(
+                            imagePath = product.imagePath,
+                            modifier = Modifier.size(46.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = product.name,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                SizeBadge(size = product.size)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "${StorageHelper.formatCurrency(product.price)} • স্টক: ${product.stockQuantity}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                 }
+
                 IconButton(onClick = onClose) {
                     Icon(imageVector = Icons.Default.Close, contentDescription = "Cancel")
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
+
+            // If Unlisted Product: Show direct item inputs
+            if (isUnlisted) {
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        OutlinedTextField(
+                            value = unlistedName,
+                            onValueChange = onUnlistedNameChange,
+                            label = { Text("পণ্যের নাম বা বিবরণ *") },
+                            placeholder = { Text("যেমন: কটন পাঞ্জাবি, জুতো, বেল্ট...") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = unlistedPriceText,
+                                onValueChange = onUnlistedPriceChange,
+                                label = { Text("একক মূল্য ৳ *") },
+                                placeholder = { Text("0.00") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            OutlinedTextField(
+                                value = unlistedSize,
+                                onValueChange = onUnlistedSizeChange,
+                                label = { Text("সাইজ / ধরণ") },
+                                placeholder = { Text("Standard / M / L") },
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Toggle to also save to stock
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "ভবিষ্যতের জন্য পণ্যটি স্টকেও সেভ করুন?",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "অন করলে ইনভেন্টরি তালিকায় পণ্যটি যুক্ত হয়ে থাকবে",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = unlistedSaveToInventory,
+                                onCheckedChange = onUnlistedSaveToInventoryChange,
+                                colors = SwitchDefaults.colors(checkedThumbColor = DokanGreen, checkedTrackColor = DokanGreenContainer)
+                            )
+                        }
+
+                        if (unlistedSaveToInventory) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = unlistedStockQtyText,
+                                onValueChange = onUnlistedStockQtyChange,
+                                label = { Text("দোকানে মোট কতটি আছে? (Initial Stock)") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+            }
 
             // Real-Time Total Calculation Box
             Surface(
@@ -474,7 +705,7 @@ private fun ActiveSaleCheckoutPanel(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "$quantity × ${StorageHelper.formatCurrency(product.price)}",
+                            text = "$quantity × ${StorageHelper.formatCurrency(unitPrice)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -715,6 +946,7 @@ private fun ActiveSaleCheckoutPanel(
                         color = if (isSelected) {
                             when (method) {
                                 "bKash" -> BkashPink
+                                "Nagad" -> NagadOrange
                                 else -> DokanGreen
                             }
                         } else MaterialTheme.colorScheme.surfaceVariant,

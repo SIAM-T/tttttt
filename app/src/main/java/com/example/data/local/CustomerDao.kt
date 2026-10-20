@@ -44,4 +44,22 @@ interface CustomerDao {
 
     @Query("SELECT * FROM due_payments ORDER BY paymentDate DESC")
     fun getAllDuePayments(): Flow<List<DuePayment>>
+
+    @Query("SELECT * FROM customers ORDER BY id ASC")
+    suspend fun getAllCustomersList(): List<Customer>
+
+    @Query("SELECT * FROM due_payments ORDER BY id ASC")
+    suspend fun getAllDuePaymentsList(): List<DuePayment>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllCustomers(customers: List<Customer>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAllDuePayments(payments: List<DuePayment>)
+
+    @Query("DELETE FROM customers")
+    suspend fun deleteAllCustomers()
+
+    @Query("DELETE FROM due_payments")
+    suspend fun deleteAllDuePayments()
 }

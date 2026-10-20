@@ -212,7 +212,7 @@ fun InventoryScreen(
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(minSize = 160.dp),
-                    contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 88.dp),
+                    contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 100.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
@@ -231,12 +231,12 @@ fun InventoryScreen(
         // Add Product FAB
         FloatingActionButton(
             onClick = onAddProductClick,
-            containerColor = PrimaryBlue,
+            containerColor = EmeraldGreen,
             contentColor = Color.White,
             shape = RoundedCornerShape(18.dp),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(20.dp)
+                .padding(bottom = 16.dp, end = 16.dp)
                 .testTag("add_product_fab")
         ) {
             Row(
@@ -245,7 +245,7 @@ fun InventoryScreen(
             ) {
                 Icon(imageVector = Icons.Default.Add, contentDescription = "Add Product")
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Add Item", fontWeight = FontWeight.Bold)
+                Text("পণ্য যোগ করুন", fontWeight = FontWeight.Bold)
             }
         }
     }

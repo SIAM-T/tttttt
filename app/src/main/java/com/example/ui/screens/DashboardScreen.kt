@@ -1,6 +1,17 @@
 package com.example.ui.screens
 
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,15 +32,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -43,11 +60,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -57,7 +79,10 @@ import com.example.ui.components.SizeBadge
 import com.example.ui.components.StatCard
 import com.example.ui.theme.BkashPink
 import com.example.ui.theme.DokanGreen
+import com.example.ui.theme.DokanGreenContainer
+import com.example.ui.theme.DokanGreenDark
 import com.example.ui.theme.DueAmber
+import com.example.util.BackupDataPayload
 import com.example.util.StorageHelper
 import com.example.viewmodel.RetailViewModel
 
@@ -69,19 +94,50 @@ fun DashboardScreen(
     onNavigateToCustomers: () -> Unit,
     onNavigateToSales: () -> Unit,
     onOpenAddProduct: () -> Unit,
+    onNavigateToDetailReport: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val summary by viewModel.dashboardSummary.collectAsStateWithLifecycle()
     val topSelling by viewModel.topSellingProducts.collectAsStateWithLifecycle()
     val allSales by viewModel.sales.collectAsStateWithLifecycle()
     val recentSales = allSales.take(4)
 
+    // Backup restore state
+    var pendingBackupPayload by remember { mutableStateOf<BackupDataPayload?>(null) }
+    var showBackupRestoreDialog by remember { mutableStateOf(false) }
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            viewModel.parseBackupFile(context, it) { payload ->
+                if (payload != null) {
+                    pendingBackupPayload = payload
+                    showBackupRestoreDialog = true
+                }
+            }
+        }
+    }
+
+    // Pulsing effect for 100% offline badge
+    val infiniteTransition = rememberInfiniteTransition(label = "Pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "PulseAlpha"
+    )
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 90.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Dokan Header with 100% Offline Room DB Badge
+        // Dokan Header with 100% Offline Badge
         item {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -102,11 +158,11 @@ fun DashboardScreen(
                         )
                     }
 
-                    // 100% Offline Badge
+                    // 100% Offline Animated Badge
                     Surface(
                         shape = RoundedCornerShape(20.dp),
                         color = DokanGreen.copy(alpha = 0.12f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, DokanGreen.copy(alpha = 0.3f))
+                        border = androidx.compose.foundation.BorderStroke(1.dp, DokanGreen.copy(alpha = 0.35f))
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -114,9 +170,9 @@ fun DashboardScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(8.dp)
+                                    .size(9.dp)
                                     .clip(CircleShape)
-                                    .background(DokanGreen)
+                                    .background(DokanGreen.copy(alpha = pulseAlpha))
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
@@ -220,6 +276,68 @@ fun DashboardScreen(
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // Prominent Detailed Report Navigation Card
+        item {
+            Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.2.dp, DokanGreen.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
+                    .clickable { onNavigateToDetailReport() }
+                    .testTag("dashboard_detail_report_card")
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(DokanGreenContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Assessment,
+                                contentDescription = null,
+                                tint = DokanGreen,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column {
+                            Text(
+                                text = "📊 বিস্তারিত বিক্রয় রিপোর্ট ও স্টেটমেন্ট",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "দৈনিক, সাপ্তাহিক, মাসিক লাভ-ক্ষতি ও পেমেন্ট অডিট",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Icon(
+                        imageVector = Icons.Default.ArrowForward,
+                        contentDescription = "Go",
+                        tint = DokanGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
         }
@@ -332,6 +450,90 @@ fun DashboardScreen(
                     Icon(imageVector = Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("পণ্য যোগ করুন")
+                }
+            }
+        }
+
+        // Data Backup & Restore Section (100% Offline Security)
+        item {
+            Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Security,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "💾 ডাটা ব্যাকআপ ও সুরক্ষা",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "১০০% অফলাইন ফাইল এক্সপোর্ট ও রিস্টোর",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.exportFullBackup(context) { intent ->
+                                    intent?.let { context.startActivity(it) }
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("export_backup_button"),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("ব্যাকআপ সেভ", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = { filePickerLauncher.launch("*/*") },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("import_backup_button"),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = DokanGreen)
+                        ) {
+                            Icon(imageVector = Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("ব্যাকআপ রিস্টোর", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
         }
@@ -564,5 +766,79 @@ fun DashboardScreen(
                 }
             }
         }
+    }
+
+    // Backup Restore Confirmation Dialog
+    if (showBackupRestoreDialog && pendingBackupPayload != null) {
+        val payload = pendingBackupPayload!!
+        AlertDialog(
+            onDismissRequest = {
+                showBackupRestoreDialog = false
+                pendingBackupPayload = null
+            },
+            icon = {
+                Icon(imageVector = Icons.Default.FolderZip, contentDescription = null, tint = DokanGreen)
+            },
+            title = {
+                Text(
+                    text = "ব্যাকআপ ফাইল রিস্টোর নিশ্চিতকরণ",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "ফাইলে প্রাপ্ত রেকর্ডসমূহ:\n" +
+                                "• পণ্য তালিকা: ${payload.products.size} টি\n" +
+                                "• বিক্রয় রসিদ: ${payload.sales.size} টি\n" +
+                                "• কাস্টমার: ${payload.customers.size} জন\n" +
+                                "• বকেয়া আদায়: ${payload.duePayments.size} টি\n" +
+                                "রপ্তানির তারিখ: ${payload.exportDate}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "আপনি কি বর্তমান ডাটা সম্পূর্ণ প্রতিস্থাপন করতে চান নাকি যোগ (Merge) করতে চান?",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.restoreBackupData(payload, replaceAll = true) {
+                            showBackupRestoreDialog = false
+                            pendingBackupPayload = null
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DokanGreen)
+                ) {
+                    Text("সম্পূর্ণ প্রতিস্থাপন")
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            viewModel.restoreBackupData(payload, replaceAll = false) {
+                                showBackupRestoreDialog = false
+                                pendingBackupPayload = null
+                            }
+                        }
+                    ) {
+                        Text("ডাটা যোগ (Merge)")
+                    }
+                    TextButton(
+                        onClick = {
+                            showBackupRestoreDialog = false
+                            pendingBackupPayload = null
+                        }
+                    ) {
+                        Text("বাতিল")
+                    }
+                }
+            }
+        )
     }
 }
