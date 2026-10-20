@@ -61,13 +61,19 @@ data class ReportTopProduct(
     val name: String,
     val size: String,
     val quantitySold: Int,
-    val totalRevenue: Double
+    val totalRevenue: Double,
+    val totalCost: Double = 0.0,
+    val estimatedProfit: Double = 0.0
 )
 
 data class DetailedReportData(
     val timeframe: TimeframeFilter = TimeframeFilter.THIS_MONTH,
     val totalRevenue: Double = 0.0,
+    val totalCost: Double = 0.0,
+    val grossProfit: Double = 0.0,
+    val profitMarginPercent: Double = 0.0,
     val totalCashCollected: Double = 0.0,
+    val realizedCashProfit: Double = 0.0,
     val totalDueGiven: Double = 0.0,
     val totalItemsSold: Int = 0,
     val totalInvoices: Int = 0,
@@ -155,6 +161,9 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
     private val _unlistedStockQtyText = MutableStateFlow("10")
     val unlistedStockQtyText = _unlistedStockQtyText.asStateFlow()
 
+    private val _unlistedCostPriceText = MutableStateFlow("")
+    val unlistedCostPriceText = _unlistedCostPriceText.asStateFlow()
+
     // Shared POS Transaction Settings
     private val _posQuantity = MutableStateFlow(1)
     val posQuantity = _posQuantity.asStateFlow()
@@ -231,12 +240,15 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
     // --- Detailed Report Analytics Stream ---
     val detailedReport: StateFlow<DetailedReportData> = combine(
         sales,
-        reportTimeframe
-    ) { saleList, timeframe ->
+        reportTimeframe,
+        products
+    ) { saleList, timeframe, prodList ->
         val range = getTimeRange(timeframe)
         val filtered = saleList.filter { it.saleTimestamp in range.first..range.second }
+        val prodMap = prodList.associateBy { it.id }
 
         var totalRev = 0.0
+        var totalCost = 0.0
         var totalPaid = 0.0
         var totalDue = 0.0
         var totalUnits = 0
@@ -251,6 +263,9 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
             totalDue += s.dueAmount
             totalUnits += s.quantity
 
+            val costPerUnit = s.productId?.let { prodMap[it]?.costPrice } ?: 0.0
+            totalCost += (costPerUnit * s.quantity)
+
             when {
                 s.paymentMethod.contains("bKash", ignoreCase = true) -> bkashAmount += s.paidAmount
                 s.paymentMethod.contains("Nagad", ignoreCase = true) -> nagadAmount += s.paidAmount
@@ -259,16 +274,30 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
 
+        val grossProfit = totalRev - totalCost
+        val profitMargin = if (totalRev > 0) (grossProfit / totalRev) * 100 else 0.0
+        val realizedCashProfit = totalPaid - totalCost
         val aov = if (filtered.isNotEmpty()) totalRev / filtered.size else 0.0
 
-        val topProds = filtered.groupBy { "${it.productName}|||${it.productSize}" }
+        val topProds = filtered.groupBy { "${it.productName}|||${it.productSize}|||${it.productId ?: -1}" }
             .map { entry ->
                 val parts = entry.key.split("|||")
                 val name = parts.getOrNull(0) ?: "Unknown"
                 val size = parts.getOrNull(1) ?: ""
+                val pId = parts.getOrNull(2)?.toLongOrNull()
+                val unitCost = pId?.let { prodMap[it]?.costPrice } ?: 0.0
                 val qty = entry.value.sumOf { it.quantity }
                 val rev = entry.value.sumOf { it.totalAmount }
-                ReportTopProduct(name, size, qty, rev)
+                val cost = unitCost * qty
+                val profit = rev - cost
+                ReportTopProduct(
+                    name = name,
+                    size = size,
+                    quantitySold = qty,
+                    totalRevenue = rev,
+                    totalCost = cost,
+                    estimatedProfit = profit
+                )
             }
             .sortedByDescending { it.totalRevenue }
             .take(6)
@@ -276,7 +305,11 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
         DetailedReportData(
             timeframe = timeframe,
             totalRevenue = totalRev,
+            totalCost = totalCost,
+            grossProfit = grossProfit,
+            profitMarginPercent = profitMargin,
             totalCashCollected = totalPaid,
+            realizedCashProfit = realizedCashProfit,
             totalDueGiven = totalDue,
             totalItemsSold = totalUnits,
             totalInvoices = filtered.size,
@@ -704,6 +737,8 @@ class RetailViewModel(application: Application) : AndroidViewModel(application) 
         sb.append("📅 সময়কাল: ${data.timeframe.banglaLabel}\n")
         sb.append("---------------------------------\n")
         sb.append("💰 মোট বিক্রি: ${StorageHelper.formatCurrency(data.totalRevenue)}\n")
+        sb.append("📦 মোট ক্রয়/কেনা খরচ: ${StorageHelper.formatCurrency(data.totalCost)}\n")
+        sb.append("📈 মোট লাভ (Gross Profit): ${StorageHelper.formatCurrency(data.grossProfit)} (${String.format(java.util.Locale.US, "%.1f", data.profitMarginPercent)}% মার্জিন)\n")
         sb.append("💵 নগদ আদায়: ${StorageHelper.formatCurrency(data.totalCashCollected)}\n")
         sb.append("⚠️ বাকি দেওয়া: ${StorageHelper.formatCurrency(data.totalDueGiven)}\n")
         sb.append("📦 মোট পণ্য বিক্রি: ${data.totalItemsSold} টি\n")

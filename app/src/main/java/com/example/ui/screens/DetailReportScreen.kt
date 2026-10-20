@@ -79,6 +79,7 @@ import com.example.ui.theme.BkashPinkContainer
 import com.example.ui.theme.DokanGreen
 import com.example.ui.theme.DokanGreenContainer
 import com.example.ui.theme.DokanGreenDark
+import com.example.ui.theme.DokanGreenLight
 import com.example.ui.theme.DueAmber
 import com.example.ui.theme.DueAmberContainer
 import com.example.ui.theme.ErrorRed
@@ -207,6 +208,11 @@ fun DetailReportScreen(
             // Hero Financial Performance Card
             item {
                 HeroReportCard(reportData = reportData)
+            }
+
+            // Profit & Loss Performance Card
+            item {
+                ProfitAnalysisCard(reportData = reportData)
             }
 
             // Key Metrics 2x2 Grid
@@ -405,7 +411,43 @@ private fun HeroReportCard(reportData: DetailedReportData) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Highlight Profit directly in Hero Banner
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = DokanGreen.copy(alpha = 0.12f)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.TrendingUp,
+                                contentDescription = null,
+                                tint = DokanGreen,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "মোট অর্জিত লাভ (Gross Profit):",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = DokanGreenDark
+                            )
+                        }
+                        Text(
+                            text = if (reportData.grossProfit >= 0) "+${StorageHelper.formatCurrency(reportData.grossProfit)} (${String.format(java.util.Locale.US, "%.1f", reportData.profitMarginPercent)}%)" else "-${StorageHelper.formatCurrency(-reportData.grossProfit)}",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
+                            color = if (reportData.grossProfit >= 0) DokanGreen else ErrorRed
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
 
                 val collectionRate = if (reportData.totalRevenue > 0) {
                     ((reportData.totalCashCollected / reportData.totalRevenue) * 100).toInt()
@@ -416,6 +458,160 @@ private fun HeroReportCard(reportData: DetailedReportData) {
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                     color = if (reportData.totalDueGiven > 0) DueAmber else DokanGreenDark
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfitAnalysisCard(reportData: DetailedReportData) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, DokanGreenLight.copy(alpha = 0.25f), RoundedCornerShape(20.dp))
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(DokanGreenContainer, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.TrendingUp,
+                            contentDescription = null,
+                            tint = DokanGreen,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "মুনাফা ও লাভ-ক্ষতির বিশ্লেষণ",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "বিক্রি আয় বনাম পণ্য কেনার খরচের হিসাব",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (reportData.grossProfit >= 0) DokanGreenContainer else Color(0xFFFEE2E2)
+                ) {
+                    Text(
+                        text = if (reportData.grossProfit >= 0) "${String.format(java.util.Locale.US, "%.1f", reportData.profitMarginPercent)}% মার্জিন" else "লোকসান",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+                        color = if (reportData.grossProfit >= 0) DokanGreenDark else ErrorRed,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Main Profit Stat Box
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "মোট আনুমানিক লাভ (Gross Profit)",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (reportData.grossProfit >= 0) "+${StorageHelper.formatCurrency(reportData.grossProfit)}" else "-${StorageHelper.formatCurrency(-reportData.grossProfit)}",
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+                            color = if (reportData.grossProfit >= 0) DokanGreen else ErrorRed
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (reportData.grossProfit >= 0) DokanGreen.copy(alpha = 0.12f) else ErrorRed.copy(alpha = 0.12f)
+                    ) {
+                        Text(
+                            text = if (reportData.grossProfit >= 0) "লাভজনক" else "সতর্কতা",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = if (reportData.grossProfit >= 0) DokanGreenDark else ErrorRed,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 2 Column Breakdown: Cost of Goods Sold vs Realized Cash Profit
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Cost of goods sold
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "মোট কেনা খরচ (COGS)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = StorageHelper.formatCurrency(reportData.totalCost),
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                // Realized Cash Profit
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "নগদ আদায়কৃত লাভ",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = StorageHelper.formatCurrency(reportData.realizedCashProfit),
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = if (reportData.realizedCashProfit >= 0) DokanGreenDark else DueAmber
+                        )
+                    }
+                }
             }
         }
     }
@@ -607,11 +803,20 @@ private fun TopProductItem(prod: ReportTopProduct) {
                 )
             }
 
-            Text(
-                text = StorageHelper.formatCurrency(prod.totalRevenue),
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                color = DokanGreen
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = StorageHelper.formatCurrency(prod.totalRevenue),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                    color = DokanGreen
+                )
+                if (prod.estimatedProfit > 0) {
+                    Text(
+                        text = "লাভ: +${StorageHelper.formatCurrency(prod.estimatedProfit)}",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = DokanGreenDark
+                    )
+                }
+            }
         }
     }
 }
